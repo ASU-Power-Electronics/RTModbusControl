@@ -71,7 +71,7 @@ Public Class EnergyCell
     ' 8 - 1 + sgn(Q)
     ' 9 - |Q| / 1000
     ' 10 - 1 + sgn(ω0 - ω)
-    ' 11 - |ω0 - ω| * 100
+    ' 11 - |ω0 - ω| * 1000
     ' 12 - P_PV / 1000
     ' 13 - E_s
     ' TODO: Generalize to array input for register mapping (for different devices)
