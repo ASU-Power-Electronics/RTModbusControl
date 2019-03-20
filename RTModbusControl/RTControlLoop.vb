@@ -101,8 +101,8 @@ Public Class RTControlLoop
 
                             c.DeltaW = _deltaW
                             c.DeltaE = _deltaE
-                            c.RealPowerSetpoint = 0
-                            c.ReactivePowerSetpoint = 0
+                            'c.RealPowerSetpoint = 0
+                            'c.ReactivePowerSetpoint = 0
 
                             Await c.WriteCommandsAsync()
                     End Select
@@ -189,7 +189,7 @@ Public Class RTControlLoop
     End Sub
 
     ' Enforces a maximum absolute value limit
-    Private Shared Function Saturate(value As Double, limit As double) As Double
+    Private Shared Function Saturate(value As Double, limit As Double) As Double
         If Math.Abs(value) > limit
             If value > 0
                 Return limit

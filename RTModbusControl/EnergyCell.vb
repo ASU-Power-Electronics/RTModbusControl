@@ -48,7 +48,7 @@ Public Class EnergyCell
     Private Const AngleScale As Double = 1/100
     Private Const PowerScale As Double = 1000
     Private Const SpeedScale As Double = 1/1000
-    Private Const EnergyStorageScale As Double = 1/10
+    Private Const EnergyStorageScale As Double = 10
 
     Private Sub OnDisconnect() Handles _cellConnection.Disconnected
         Connected.Remove(Me)
@@ -73,7 +73,7 @@ Public Class EnergyCell
     ' 10 - 1 + sgn(ω0 - ω)
     ' 11 - |ω0 - ω| * 1000
     ' 12 - P_PV / 1000
-    ' 13 - E_s
+    ' 13 - E_s / 10
     ' TODO: Generalize to array input for register mapping (for different devices)
     Public Async Function ReadMeasurementsAsync() As Task
         Dim registerAddresses As Integer() = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14}
@@ -91,7 +91,7 @@ Public Class EnergyCell
         Try
             wordResult = CellConnection.Client.ReadInputRegisters(registerAddresses(0) - 1, registerAddresses.Length)
             Console.WriteLine(
-                $"{Now.Hour}:{Now.Minute}:{Now.Second}.{Now.Millisecond} - {Name} Read ({ _
+                $"{Now.Hour}:{Now.Minute}:{Now.Second}.{Now.Millisecond} - {Name} Meas. Read ({ _
                                  String.Join(", ", Array.ConvertAll(wordResult, Function(x) x.ToString()))})")
         Catch ex As Exception
             Console.WriteLine($"EnergyCell {Name} ReadMeasurements:  {ex.Message}")
@@ -129,13 +129,13 @@ Public Class EnergyCell
     ' Reads commands from device holding registers in local control mode
     ' Specific to OpalRT registers:
     ' 8 - Islanded/Grid-Connected (0 - Grid-Connected, 1 - Islanded)
-    ' 9 - P0
-    ' 10 - Q0
+    ' 9 - P0 / 1000
+    ' 10 - Q0 / 1000
     ' 11 - sgn(δω) + 1
     ' 12 - |δω|*1000
     ' 13 - sgn(δE) + 1
     ' 14 - |δE|
-    ' 15 - E_s,avg
+    ' 15 - E_s,avg / 10
     ' TODO: Generalize to array input for register mapping (for different devices)
     Public Async Function ReadCommandsAsync() As Task
         Dim registerAddresses As Integer() = {9, 10, 11, 12, 13, 14, 15, 16}
@@ -153,7 +153,7 @@ Public Class EnergyCell
         Try
             wordResult = CellConnection.Client.ReadHoldingRegisters(registerAddresses(0) - 1, registerAddresses.Length)
             Console.WriteLine(
-                $"{Now.Hour}:{Now.Minute}:{Now.Second}.{Now.Millisecond} - {Name} Read ({ _
+                $"{Now.Hour}:{Now.Minute}:{Now.Second}.{Now.Millisecond} - {Name} Cont. Read ({ _
                                  String.Join(", ", Array.ConvertAll(wordResult, Function(x) x.ToString()))})")
         Catch e As Exception
             Console.WriteLine($"EnergyCell {Name} ReadControls:  {e.Message}")
@@ -168,6 +168,8 @@ Public Class EnergyCell
             CellConnection.Client.Disconnect()
         End Try
 
+        wordResult = AvoidOverflow(wordResult)
+
         ' Assign Opal RT register values
         RealPowerSetpoint = wordResult(1)*PowerScale
         ReactivePowerSetpoint = wordResult(2)*PowerScale
@@ -181,13 +183,13 @@ Public Class EnergyCell
     ' Writes all commands to device holding registers
     ' Specific to OpalRT registers:
     ' 0 - Remote/Local control (0 - local, 1 - remote)
-    ' 1 - |P0|
-    ' 2 - |Q0|
+    ' 1 - |P0| / 1000
+    ' 2 - |Q0| / 1000
     ' 3 - 1 + sgn(δω)
-    ' 4 - |δω|
+    ' 4 - |δω| / 1000
     ' 5 - 1 + sgn(δE)
     ' 6 - δE
-    ' 7 - E_s,avg
+    ' 7 - E_s,avg / 10
     ' TODO: Generalize to array input for register mapping (for different devices)
     Public Async Function WriteCommandsAsync() As Task
         Dim registerAddresses As Integer() = {1, 2, 3, 4, 5, 6, 7, 8}
@@ -209,12 +211,12 @@ Public Class EnergyCell
 
         Working = True
 
-        AvoidOverflow(registerValues)
+        registerValues = AvoidOverflow(registerValues)
 
         Try
             CellConnection.Client.WriteMultipleRegisters(registerAddresses(0) - 1, registerValues)
             Console.WriteLine(
-                $"{Now.Hour}:{Now.Minute}:{Now.Second}.{Now.Millisecond} - {Name} Wrote ({ _
+                $"{Now.Hour}:{Now.Minute}:{Now.Second}.{Now.Millisecond} - {Name} Cont. Wrote ({ _
                                  String.Join(", ", Array.ConvertAll(registerValues, Function(x) x.ToString()))})")
         Catch e As Exception
             Console.WriteLine($"EnergyCell {Name} WriteControls:  {e.Message}")
@@ -224,16 +226,18 @@ Public Class EnergyCell
         Working = False
     End Function
 
-    ' Checks control signals for UInt16 bounds to avoid overflow
-    Private Shared Sub AvoidOverflow(registerValues() As Integer)
+    ' Checks control signals for UInt16 bounds to avoid overflow by integer division
+    Private Shared Function AvoidOverflow(registerValues() As Integer) As Integer()
         Parallel.ForEach(registerValues, Sub(v)
                                              If v > UInt16.MaxValue
-                                                 Dim vIdx = registerValues(Array.FindIndex(registerValues, Function(p) p = v))
+                                                 Dim vIdx = Array.FindIndex(registerValues, Function(p) p = v)
+
                                                  registerValues(vIdx) = CType((UInt16.MaxValue - 1) * (registerValues(vIdx) / registerValues(vIdx)), Integer)
                                                  Console.WriteLine($"Value {v} at index {vIdx} too large, capped at {UInt16.MaxValue - 1}")
                                              End If
                                          End Sub)
-    End Sub
+        Return registerValues
+    End Function
 
     ' Sends local control command
     Public Async Function SendLocalControlCommandAsync() As Task
