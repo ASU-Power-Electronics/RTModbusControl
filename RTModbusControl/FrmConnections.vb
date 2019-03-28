@@ -52,7 +52,7 @@ Public Class FrmConnections
             Connections.All.Add(New Connection With {
                                    .Client = New ModbusClient("129.219.32.77", 1500 + c) With {
                                     .UnitIdentifier = CByte(c),
-                                    .ConnectionTimeout = 1001},
+                                    .ConnectionTimeout = 1000},
                                    .DeviceId = "1",
                                    .IpAddress = "129.219.32.77",
                                    .Name = $"Device {c}",

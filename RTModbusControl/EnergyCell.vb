@@ -75,17 +75,18 @@ Public Class EnergyCell
     ' 12 - P_PV / 1000
     ' 13 - E_s / 10
     ' TODO: Generalize to array input for register mapping (for different devices)
-    Public Async Function ReadMeasurementsAsync() As Task
+    Public Async Function ReadMeasurementsAsync() As Task(Of Boolean)
         Dim registerAddresses As Integer() = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14}
         Dim wordResult As Integer()
+        Dim dataIsValid As Boolean
 
         Working = True
 
         ' Bail if not connected
         If Not CellConnection.Client.Connected Then
-            Console.WriteLine($"{Name} is disconnected.  Measurements dropped.")
+            Console.WriteLine($"{Now.Hour}:{Now.Minute}:{Now.Second}.{Now.Millisecond} - {Name} is disconnected.  Measurements dropped.")
             Await Task.Delay(TimeSpan.FromMilliseconds(1))
-            Return
+            Return False
         End If
 
         Try
@@ -94,36 +95,43 @@ Public Class EnergyCell
                 $"{Now.Hour}:{Now.Minute}:{Now.Second}.{Now.Millisecond} - {Name} Meas. Read ({ _
                                  String.Join(", ", Array.ConvertAll(wordResult, Function(x) x.ToString()))})")
         Catch ex As Exception
-            Console.WriteLine($"EnergyCell {Name} ReadMeasurements:  {ex.Message}")
-            wordResult = {CType(VoltageMagnitudeA/VoltageScale, Integer),
-                          Math.Sign(VoltageAngleA) + 1,
-                          CType(VoltageAngleA/AngleScale, Integer),
-                          CType(CurrentMagnitudeA/CurrentScale, Integer),
-                          Math.Sign(CurrentAngleA) + 1,
-                          CType(CurrentAngleA/AngleScale, Integer),
-                          Math.Sign(RealPower) + 1,
-                          CType(Math.Abs(RealPower)/PowerScale, Integer),
-                          Math.Sign(ReactivePower) + 1,
-                          CType(Math.Abs(ReactivePower)/PowerScale, Integer),
-                          Math.Sign(Speed) + 1,
-                          CType(Speed/SpeedScale, Integer),
-                          CType(PvGeneration/PowerScale, Integer),
-                          CType(EnergyStorage/EnergyStorageScale, Integer)}
-            CellConnection.Client.Disconnect()
+            Console.WriteLine($"{Now.Hour}:{Now.Minute}:{Now.Second}.{Now.Millisecond} - EnergyCell {Name} ReadMeasurements:  {ex.Message}")
+            'wordResult = {CType(VoltageMagnitudeA/VoltageScale, Integer),
+            '              Math.Sign(VoltageAngleA) + 1,
+            '              CType(VoltageAngleA/AngleScale, Integer),
+            '              CType(CurrentMagnitudeA/CurrentScale, Integer),
+            '              Math.Sign(CurrentAngleA) + 1,
+            '              CType(CurrentAngleA/AngleScale, Integer),
+            '              Math.Sign(RealPower) + 1,
+            '              CType(Math.Abs(RealPower)/PowerScale, Integer),
+            '              Math.Sign(ReactivePower) + 1,
+            '              CType(Math.Abs(ReactivePower)/PowerScale, Integer),
+            '              Math.Sign(Speed) + 1,
+            '              CType(Speed/SpeedScale, Integer),
+            '              CType(PvGeneration/PowerScale, Integer),
+            '              CType(EnergyStorage/EnergyStorageScale, Integer)}
+            Return False
         End Try
 
+        dataIsValid = ValidateData(wordResult, "Measurement")
+
         ' Assign Opal RT register values
-        VoltageMagnitudeA = wordResult(0)*VoltageScale
-        VoltageAngleA = (wordResult(1) - 1)*wordResult(2)*AngleScale
-        CurrentMagnitudeA = wordResult(3)*CurrentScale
-        CurrentAngleA = (wordResult(4) - 1)*wordResult(5)*AngleScale
-        RealPower = (wordResult(6) - 1)*wordResult(7)*PowerScale
-        ReactivePower = (wordResult(8) - 1)*wordResult(9)*PowerScale
-        Speed = 2*Math.PI*60 - (wordResult(10) - 1)*wordResult(11)*SpeedScale
-        PvGeneration = wordResult(12)*PowerScale
-        EnergyStorage = wordResult(13)*EnergyStorageScale
+        If dataIsValid Then
+            VoltageMagnitudeA = wordResult(0)*VoltageScale
+            VoltageAngleA = (wordResult(1) - 1)*wordResult(2)*AngleScale
+            CurrentMagnitudeA = wordResult(3)*CurrentScale
+            CurrentAngleA = (wordResult(4) - 1)*wordResult(5)*AngleScale
+            RealPower = (wordResult(6) - 1)*wordResult(7)*PowerScale
+            ReactivePower = (wordResult(8) - 1)*wordResult(9)*PowerScale
+            Speed = 2*Math.PI*60 - (wordResult(10) - 1)*wordResult(11)*SpeedScale
+            PvGeneration = wordResult(12)*PowerScale
+            EnergyStorage = wordResult(13)*EnergyStorageScale
+        Else 
+            Return False
+        End If
 
         Working = False
+        Return True
     End Function
 
     ' Reads commands from device holding registers in local control mode
@@ -137,15 +145,16 @@ Public Class EnergyCell
     ' 14 - |δE|
     ' 15 - E_s,avg / 10
     ' TODO: Generalize to array input for register mapping (for different devices)
-    Public Async Function ReadCommandsAsync() As Task
+    Public Async Function ReadCommandsAsync() As Task(Of Boolean)
         Dim registerAddresses As Integer() = {9, 10, 11, 12, 13, 14, 15, 16}
         Dim wordResult As Integer()
+        Dim dataIsValid As Boolean
 
         ' Bail if not connected
         If Not CellConnection.Client.Connected Then
-            Console.WriteLine($"{Name} is disconnected.  Read commands dropped.")
+            Console.WriteLine($"{Now.Hour}:{Now.Minute}:{Now.Second}.{Now.Millisecond} - {Name} is disconnected.  Read commands dropped.")
             Await Task.Delay(TimeSpan.FromMilliseconds(1))
-            Return
+            Return False
         End If
 
         Working = True
@@ -153,31 +162,38 @@ Public Class EnergyCell
         Try
             wordResult = CellConnection.Client.ReadHoldingRegisters(registerAddresses(0) - 1, registerAddresses.Length)
             Console.WriteLine(
-                $"{Now.Hour}:{Now.Minute}:{Now.Second}.{Now.Millisecond} - {Name} Cont. Read ({ _
+                $"{Now.Hour}:{Now.Minute}:{Now.Second}.{Now.Millisecond} - {Name} Cont. Read:  ({ _
                                  String.Join(", ", Array.ConvertAll(wordResult, Function(x) x.ToString()))})")
-        Catch e As Exception
-            Console.WriteLine($"EnergyCell {Name} ReadControls:  {e.Message}")
-            wordResult = {GetStatusRegister(Status),
-                          CType(RealPowerSetpoint, Integer),
-                          CType(ReactivePowerSetpoint, Integer),
-                          Math.Sign(DeltaW) + 1,
-                          CType(Math.Abs(DeltaW), Integer),
-                          Math.Sign(DeltaE) + 1,
-                          CType(Math.Abs(DeltaE), Integer),
-                          CType(EnergyStorageAverage, Integer)}
-            CellConnection.Client.Disconnect()
+        Catch ex As Exception
+            Console.WriteLine($"{Now.Hour}:{Now.Minute}:{Now.Second}.{Now.Millisecond} - Ex - {Name} ReadControls:  {ex.Message}")
+            'wordResult = {GetStatusRegister(Status),
+            '              CType(RealPowerSetpoint, Integer),
+            '              CType(ReactivePowerSetpoint, Integer),
+            '              Math.Sign(DeltaW) + 1,
+            '              CType(Math.Abs(DeltaW), Integer),
+            '              Math.Sign(DeltaE) + 1,
+            '              CType(Math.Abs(DeltaE), Integer),
+            '              CType(EnergyStorageAverage, Integer)}
+            Return False
         End Try
+
+        dataIsValid = ValidateData(wordResult, "Controls")
 
         wordResult = AvoidOverflow(wordResult)
 
         ' Assign Opal RT register values
-        RealPowerSetpoint = wordResult(1)*PowerScale
-        ReactivePowerSetpoint = wordResult(2)*PowerScale
-        DeltaW = (wordResult(3) - 1)*wordResult(4)*SpeedScale
-        DeltaE = (wordResult(5) - 1)*wordResult(6)*VoltageScale
-        EnergyStorageAverage = wordResult(7)*EnergyStorageScale
+        If dataIsValid Then
+            RealPowerSetpoint = wordResult(1)*PowerScale
+            ReactivePowerSetpoint = wordResult(2)*PowerScale
+            DeltaW = (wordResult(3) - 1)*wordResult(4)*SpeedScale
+            DeltaE = (wordResult(5) - 1)*wordResult(6)*VoltageScale
+            EnergyStorageAverage = wordResult(7)*EnergyStorageScale
+        Else
+            Return False
+        End If
 
         Working = False
+        Return True
     End Function
 
     ' Writes all commands to device holding registers
@@ -191,7 +207,7 @@ Public Class EnergyCell
     ' 6 - δE
     ' 7 - E_s,avg / 10
     ' TODO: Generalize to array input for register mapping (for different devices)
-    Public Async Function WriteCommandsAsync() As Task
+    Public Async Function WriteCommandsAsync() As Task(Of Boolean)
         Dim registerAddresses As Integer() = {1, 2, 3, 4, 5, 6, 7, 8}
         Dim registerValues As Integer() = {GetStatusRegister(Status),
                                            CType(Math.Round(Math.Abs(RealPowerSetpoint / PowerScale)), Integer),
@@ -204,9 +220,9 @@ Public Class EnergyCell
 
         ' Bail if not connected
         If Not CellConnection.Client.Connected Then
-            Console.WriteLine($"{Name} is disconnected.  Commands dropped.")
+            Console.WriteLine($"{Now.Hour}:{Now.Minute}:{Now.Second}.{Now.Millisecond} - {Name} is disconnected.  Commands dropped.")
             Await Task.Delay(TimeSpan.FromMilliseconds(1))
-            Return
+            Return False
         End If
 
         Working = True
@@ -216,44 +232,74 @@ Public Class EnergyCell
         Try
             CellConnection.Client.WriteMultipleRegisters(registerAddresses(0) - 1, registerValues)
             Console.WriteLine(
-                $"{Now.Hour}:{Now.Minute}:{Now.Second}.{Now.Millisecond} - {Name} Cont. Wrote ({ _
+                $"{Now.Hour}:{Now.Minute}:{Now.Second}.{Now.Millisecond} - {Name} Cont. Wrote:  ({ _
                                  String.Join(", ", Array.ConvertAll(registerValues, Function(x) x.ToString()))})")
-        Catch e As Exception
-            Console.WriteLine($"EnergyCell {Name} WriteControls:  {e.Message}")
-            CellConnection.Client.Disconnect()
+        Catch ex As Exception
+            Console.WriteLine($"{Now.Hour}:{Now.Minute}:{Now.Second}.{Now.Millisecond} - Ex - {Name} WriteControls:  {ex.Message}")
+            Return False
         End Try
 
         Working = False
-    End Function
-
-    ' Checks control signals for UInt16 bounds to avoid overflow by integer division
-    Private Shared Function AvoidOverflow(registerValues() As Integer) As Integer()
-        Parallel.ForEach(registerValues, Sub(v)
-                                             If v > UInt16.MaxValue
-                                                 Dim vIdx = Array.FindIndex(registerValues, Function(p) p = v)
-
-                                                 registerValues(vIdx) = CType((UInt16.MaxValue - 1) * (registerValues(vIdx) / registerValues(vIdx)), Integer)
-                                                 Console.WriteLine($"Value {v} at index {vIdx} too large, capped at {UInt16.MaxValue - 1}")
-                                             End If
-                                         End Sub)
-        Return registerValues
+        Return True
     End Function
 
     ' Sends local control command
-    Public Async Function SendLocalControlCommandAsync() As Task
+    Public Async Function SendLocalControlCommandAsync() As Task(Of Boolean)
         ' Bail if not connected
         If Not CellConnection.Client.Connected Then
-            Console.WriteLine($"{Name} is disconnected.  Commands dropped.")
+            Console.WriteLine($"{Now.Hour}:{Now.Minute}:{Now.Second}.{Now.Millisecond} - {Name} is disconnected.  Commands dropped.")
             Await Task.Delay(TimeSpan.FromMilliseconds(1))
-            Return
+            Return False
         End If
 
         Try
             CellConnection.Client.WriteSingleRegister(0, 0)
-        Catch e As Exception
-            Console.WriteLine($"EnergyCell {Name} WriteControls:  {e.Message}")
-            CellConnection.Client.Disconnect()
+        Catch ex As Exception
+            Console.WriteLine($"{Now.Hour}:{Now.Minute}:{Now.Second}.{Now.Millisecond} - Ex - {Name} WriteControls:  {ex.Message}")
+            Return False
         End Try
+
+        Return True
+    End Function
+
+    ' Validates data for Opal RT Modbus function by checking sign values
+    Private Function ValidateData(data() As Integer, v As String) As Boolean
+        If Equals(v, "Measurement")
+            Dim twoOkay As Boolean = Equals(data(1), 0) Or Equals(data(1), 2)
+            Dim fiveOkay As Boolean = Equals(data(4), 0) Or Equals(data(4), 2)
+            Dim sevenOkay As Boolean = Equals(data(6), 0) Or Equals(data(6), 2)
+            Dim nineOkay As Boolean = Equals(data(8), 0) Or Equals(data(8), 2)
+            Dim elevenOkay As Boolean = Equals(data(10), 0) Or Equals(data(10), 2)
+
+            If twoOkay And fiveOkay And sevenOkay And nineOkay And elevenOkay Then
+                Return True
+            Else
+                Return False
+            End If
+        ElseIf Equals(v, "Controls")
+            Dim threeOkay As Boolean = Equals(data(2), 0) Or Equals(data(2), 2)
+            Dim fiveOkay As Boolean = Equals(data(4), 0) Or Equals(data(4), 2)
+
+            If threeOkay And fiveOkay Then
+                Return True
+            Else
+                Return False
+            End If
+        End If
+
+        Return False
+    End Function
+
+    ' Checks control signals for UInt16 bounds to avoid overflow by integer division
+    Private Function AvoidOverflow(registerValues() As Integer) As Integer()
+        Parallel.ForEach(registerValues, Sub(v)
+                                             If v > UInt16.MaxValue
+                                                 Dim vIdx = Array.FindIndex(registerValues, Function(p) p = v)
+                                                 registerValues(vIdx) = CType((UInt16.MaxValue - 1) * (registerValues(vIdx) / registerValues(vIdx)), Integer)
+                                                 Console.WriteLine($"{Now.Hour}:{Now.Minute}:{Now.Second}.{Now.Millisecond} - {Name} Overflow:  Value {v} at index {vIdx} too large, capped at {UInt16.MaxValue - 1}")
+                                             End If
+                                         End Sub)
+        Return registerValues
     End Function
 
     ' Converts Status to integer value for transmission to Modbus slave

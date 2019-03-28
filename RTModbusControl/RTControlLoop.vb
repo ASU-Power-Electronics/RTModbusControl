@@ -83,38 +83,36 @@ Public Class RTControlLoop
         Dim energySum = 0.0
 
         ' Communicate in parallel with all energy cells
-        Parallel.ForEach(Connected, Async Sub(c)
+        Parallel.ForEach(EnergyCells.All, Async Sub(c)
             c.EnergyStorageAverage = _averageStoredEnergy
+            Dim opComplete As Boolean = True
 
-            If c.CellConnection.Client.Connected Then
-                If c.Status = "Remote" Then
-                    Select Case c.Mode
-                        Case "Manual"
-                            Await c.ReadMeasurementsAsync()
+            If Connected.Contains(c) Then
+                Try
+                    If c.Status = "Remote" Then
+                        opComplete = Await c.ReadMeasurementsAsync()
 
-                            c.DeltaW = _deltaW
-                            c.DeltaE = _deltaE
+                        c.DeltaW = _deltaW
+                        c.DeltaE = _deltaE
 
-                            Await c.WriteCommandsAsync()
-                        Case "Automated"
-                            Await c.ReadMeasurementsAsync()
+                        opComplete = Await c.WriteCommandsAsync()
+                    Else ' Local
+                        opComplete = Await c.ReadMeasurementsAsync()
+                        opComplete = Await c.ReadCommandsAsync()
+                        opComplete = Await c.SendLocalControlCommandAsync()
 
-                            c.DeltaW = _deltaW
-                            c.DeltaE = _deltaE
-                            'c.RealPowerSetpoint = 0
-                            'c.ReactivePowerSetpoint = 0
-
-                            Await c.WriteCommandsAsync()
-                    End Select
-                Else ' Local
-                    Await c.ReadMeasurementsAsync()
-                    Await c.ReadCommandsAsync()
-                    Await c.SendLocalControlCommandAsync()
-
-                    _deltaW = c.DeltaW
-                    _deltaE = c.DeltaE
-                End If
+                        _deltaW = c.DeltaW
+                        _deltaE = c.DeltaE
+                    End If
+                Catch ex As Exception
+                    Console.WriteLine($"{Now.Hour}:{Now.Minute}:{Now.Second}.{Now.Millisecond} - Ex - Parallel Read/Write:  {ex.Message}")
+                End Try
             End If
+
+            If Not opComplete Then
+                c.CellConnection.Client.Disconnect()
+            End If
+
             End Sub)
 
         ' Communicate with any tertiary controllers and set frequency deviation
@@ -143,7 +141,12 @@ Public Class RTControlLoop
             _eW = _omegaStar - EnergyCells.All(_primaryEC).Speed
             _eE = EnergyCells.All(_primaryEC).VoltageSetpoint - EnergyCells.All(_primaryEC).VoltageMagnitudeA
         Catch ex As Exception
-            Console.WriteLine($"No connected devices. Control frozen.")
+            If Equals(Connected.Count, 0)
+                Console.WriteLine($"{Now.Hour}:{Now.Minute}:{Now.Second}.{Now.Millisecond} - OnPulse:  No connected devices. Control frozen.")
+            Else
+                Console.WriteLine($"{Now.Hour}:{Now.Minute}:{Now.Second}.{Now.Millisecond} - Ex - OnPulse:  {ex.Message}")
+            End If
+
             _eW = _eWold
             _eE = _eEold
         End Try
@@ -169,7 +172,7 @@ Public Class RTControlLoop
                 state.TimerReference.Dispose()
             End If
         Catch ex As Exception
-            Console.WriteLine($"Display:  {ex.Message}")
+            Console.WriteLine($"{Now.Hour}:{Now.Minute}:{Now.Second}.{Now.Millisecond} - Ex - Display:  {ex.Message}")
         End Try
     End Sub
     

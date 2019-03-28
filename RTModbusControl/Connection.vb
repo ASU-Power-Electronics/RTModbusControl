@@ -35,19 +35,19 @@ Public Class Connection
     Private Sub ConnectedChanged(sender As Object) Handles _client.ConnectedChanged
         SyncLock _lockObject
             If DirectCast(sender, ModbusClient).Connected And _reconnecting
-                Console.WriteLine($"{Name} Reconnected.")
+                Console.WriteLine($"{Now.Hour}:{Now.Minute}:{Now.Second}.{Now.Millisecond} - {Name} Reconnected.")
                 _reconnecting = False
                 RaiseEvent Connected
             ElseIf DirectCast(sender, ModbusClient).Connected And Not ShutDown
-                Console.WriteLine($"{Name} Connected.")
+                Console.WriteLine($"{Now.Hour}:{Now.Minute}:{Now.Second}.{Now.Millisecond} - {Name} Connected.")
                 _reconnecting = False
                 RaiseEvent Connected
             ElseIf Not (DirectCast(sender, ModbusClient).Connected Or ShutDown Or _reconnecting) Then
-                If DirectCast(sender, ModbusClient).Available(201)
-                    Console.WriteLine($"{Name} disconnected, attempting to reconnect.")
+                If DirectCast(sender, ModbusClient).Available(4000)
+                    Console.WriteLine($"{Now.Hour}:{Now.Minute}:{Now.Second}.{Now.Millisecond} - {Name} disconnected, attempting to reconnect.")
                     RaiseEvent ClientFailure
                 Else
-                    Console.WriteLine($"{Name} unavailable.")
+                    Console.WriteLine($"{Now.Hour}:{Now.Minute}:{Now.Second}.{Now.Millisecond} - {Name} unavailable.")
                     RaiseEvent ClientFailure
                 End If
 
@@ -61,14 +61,14 @@ Public Class Connection
         SyncLock _lockObject
             _client = New ModbusClient(IpAddress, CType(Port, Integer)) With {
                 .UnitIdentifier = CByte(DeviceId),
-                .ConnectionTimeout = 201
+                .ConnectionTimeout = 1000
                 }
 
             Try
                 _client.Connect()
                 _reconnecting = True
-            Catch e As Exception
-                Console.WriteLine($"Connection error {Name}:  {e.Message}")
+            Catch ex As Exception
+                Console.WriteLine($"{Now.Hour}:{Now.Minute}:{Now.Second}.{Now.Millisecond} - Ex - {Name} Connection error:  {ex.Message}")
                 _reconnecting = False
                 _client.Disconnect()
             End Try

@@ -82,9 +82,9 @@
     <ApplicationManifest>My Project\app.manifest</ApplicationManifest>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="EasyModbus, Version=4.4.0.0, Culture=neutral, processorArchitecture=MSIL">
+    <Reference Include="EasyModbus, Version=5.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>S:\Software\My Programs\Education\EasyModbusTCP .NET Package V5.0\EasyModbusTCP .NET Package V5.0\EasyModbusLibrary for .NET (DLL)\EasyModbusLibrary for .NET (DLL)\EasyModbus.dll</HintPath>
+      <HintPath>S:\Software\My Programs\Education\EasyModbusTCP .NET Package V5.5\EasyModbusLibrary for .NET (DLL)\EasyModbus.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Data" />

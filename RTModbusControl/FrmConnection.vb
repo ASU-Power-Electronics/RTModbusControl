@@ -41,7 +41,7 @@ Public Class FrmConnection
             connection.Upstream = chkTertiaryController.Checked
             connection.Client = New ModbusClient(ip, CType(port, Integer)) With {
                 .UnitIdentifier = CByte(id),
-                .ConnectionTimeout = 201
+                .ConnectionTimeout = 1000
                 }
 
             If InteractionMode.Equals("New") Then

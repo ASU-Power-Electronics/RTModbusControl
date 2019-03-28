@@ -473,8 +473,8 @@ Public Class FrmControls
                     Try
                         c.CellConnection.Client.Connect(c.CellConnection.Client.IPAddress, c.CellConnection.Client.Port)
                         LstDevices.Items.Item(c.Name).SubItems(2).Text = AllControlText.StatusConnected
-                    Catch e As Exception
-                        Console.WriteLine($"EnergyCell {c.Name}:  {e.Message}")
+                    Catch ex As Exception
+                        Console.WriteLine($"{Now.Hour}:{Now.Minute}:{Now.Second}.{Now.Millisecond} - Ex - {c.Name}:  {ex.Message}")
                     End Try
                 Else
                     LstDevices.Items.Item(c.Name).SubItems(2).Text = AllControlText.StatusUnavailable
@@ -493,8 +493,8 @@ Public Class FrmControls
                         c.ControllerConnection.Client.Connect(c.ControllerConnection.Client.IPAddress,
                                                               c.ControllerConnection.Client.Port)
                         LstDevices.Items.Item(c.Name).SubItems(2).Text = AllControlText.StatusConnected
-                    Catch e As Exception
-                        Console.WriteLine($"Controller {c.Name}:  {e.Message}")
+                    Catch ex As Exception
+                        Console.WriteLine($"{Now.Hour}:{Now.Minute}:{Now.Second}.{Now.Millisecond} - Ex - {c.Name}:  {ex.Message}")
                     End Try
                 Else
                     LstDevices.Items.Item(c.Name).SubItems(2).Text = AllControlText.StatusUnavailable

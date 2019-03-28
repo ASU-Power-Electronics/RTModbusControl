@@ -15,8 +15,8 @@ Public Class UpstreamController
 
         Try
             result = ControllerConnection.Client.ReadInputRegisters(0, 2)
-        Catch e As Exception
-            Console.WriteLine($"Controller {Name}:  {e.Message}")
+        Catch ex As Exception
+            Console.WriteLine($"{Now.Hour}:{Now.Minute}:{Now.Second}.{Now.Millisecond} - Ex - Controller {Name}:  {ex.Message}")
         End Try
 
         DeltaOmega = (result(0) - 1)*result(1)/1000
