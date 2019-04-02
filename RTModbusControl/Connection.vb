@@ -26,10 +26,10 @@ Public Class Connection
         End Set
     End Property
 
+    Private Event ClientFailure
+
     Public Event Connected
     Public Event Disconnected
-
-    Private Event ClientFailure
 
     ' Raises appropriate events and writes console messages on connection status changes
     Private Sub ConnectedChanged(sender As Object) Handles _client.ConnectedChanged

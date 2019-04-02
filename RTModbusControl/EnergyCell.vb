@@ -92,7 +92,7 @@ Public Class EnergyCell
         Try
             wordResult = CellConnection.Client.ReadInputRegisters(registerAddresses(0) - 1, registerAddresses.Length)
             Console.WriteLine(
-                $"{Now.Hour}:{Now.Minute}:{Now.Second}.{Now.Millisecond} - {Name} Meas. Read ({ _
+                $"{Now.Hour}:{Now.Minute}:{Now.Second}.{Now.Millisecond} - {Name} Meas. Read:  ({ _
                                  String.Join(", ", Array.ConvertAll(wordResult, Function(x) x.ToString()))})")
         Catch ex As Exception
             Console.WriteLine($"{Now.Hour}:{Now.Minute}:{Now.Second}.{Now.Millisecond} - EnergyCell {Name} ReadMeasurements:  {ex.Message}")
@@ -126,7 +126,9 @@ Public Class EnergyCell
             Speed = 2*Math.PI*60 - (wordResult(10) - 1)*wordResult(11)*SpeedScale
             PvGeneration = wordResult(12)*PowerScale
             EnergyStorage = wordResult(13)*EnergyStorageScale
-        Else 
+        Else
+            Console.WriteLine($"{Now.Hour}:{Now.Minute}:{Now.Second}.{Now.Millisecond} - {Name} Meas. Data Invalid:  ({ _
+                                 String.Join(", ", Array.ConvertAll(wordResult, Function(x) x.ToString()))})")
             Return False
         End If
 
@@ -189,6 +191,8 @@ Public Class EnergyCell
             DeltaE = (wordResult(5) - 1)*wordResult(6)*VoltageScale
             EnergyStorageAverage = wordResult(7)*EnergyStorageScale
         Else
+            Console.WriteLine($"{Now.Hour}:{Now.Minute}:{Now.Second}.{Now.Millisecond} - {Name} Cont. Data Invalid:  ({ _
+                                 String.Join(", ", Array.ConvertAll(wordResult, Function(x) x.ToString()))})")
             Return False
         End If
 
@@ -262,7 +266,7 @@ Public Class EnergyCell
         Return True
     End Function
 
-    ' Validates data for Opal RT Modbus function by checking sign values
+    ' Validates data for Opal RT Modbus function by checking sign values (does not prevent all zeros)
     Private Function ValidateData(data() As Integer, v As String) As Boolean
         If Equals(v, "Measurement")
             Dim twoOkay As Boolean = Equals(data(1), 0) Or Equals(data(1), 2)
@@ -277,10 +281,10 @@ Public Class EnergyCell
                 Return False
             End If
         ElseIf Equals(v, "Controls")
-            Dim threeOkay As Boolean = Equals(data(2), 0) Or Equals(data(2), 2)
-            Dim fiveOkay As Boolean = Equals(data(4), 0) Or Equals(data(4), 2)
+            Dim fourOkay As Boolean = Equals(data(3), 0) Or Equals(data(3), 2)
+            Dim sixOkay As Boolean = Equals(data(5), 0) Or Equals(data(5), 2)
 
-            If threeOkay And fiveOkay Then
+            If fourOkay And sixOkay Then
                 Return True
             Else
                 Return False

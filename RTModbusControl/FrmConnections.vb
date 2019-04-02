@@ -48,7 +48,7 @@ Public Class FrmConnections
     ' If the configuration is set to debug, make three test connections automatically.
     <Conditional("DEBUG")>
     Private Shared Sub ConnectionShortcuts()
-        For c = 1 To 3
+        For c = 1 To 10
             Connections.All.Add(New Connection With {
                                    .Client = New ModbusClient("129.219.32.77", 1500 + c) With {
                                     .UnitIdentifier = CByte(c),

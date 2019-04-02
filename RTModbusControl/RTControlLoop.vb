@@ -141,7 +141,7 @@ Public Class RTControlLoop
             _eW = _omegaStar - EnergyCells.All(_primaryEC).Speed
             _eE = EnergyCells.All(_primaryEC).VoltageSetpoint - EnergyCells.All(_primaryEC).VoltageMagnitudeA
         Catch ex As Exception
-            If Equals(Connected.Count, 0)
+            If Equals(Connected.Count, 0) Or Equals(_primaryEC, -1)
                 Console.WriteLine($"{Now.Hour}:{Now.Minute}:{Now.Second}.{Now.Millisecond} - OnPulse:  No connected devices. Control frozen.")
             Else
                 Console.WriteLine($"{Now.Hour}:{Now.Minute}:{Now.Second}.{Now.Millisecond} - Ex - OnPulse:  {ex.Message}")
@@ -184,7 +184,7 @@ Public Class RTControlLoop
                     _primaryEC = 0
                 End If
             Else
-                _primaryEC = EnergyCells.All.FindIndex(1, 1, Function(p) p.CellConnection.Client.Connected)
+                _primaryEC = EnergyCells.All.FindIndex(1, Function(p) p.CellConnection.Client.Connected)
             End If
         Else 
             _primaryEC = -1
