@@ -344,18 +344,6 @@ Public Class FrmControls
                                  LblAverageEnergyUnit)
                     LblDeltaOmega.Text = AllControlText.SpeedControlLabel
                 End If
-
-                'Update Connection Status
-                If currentEnergyCell.CellConnection.Client.Connected Then
-                    LstDevices.Items.Item(currentEnergyCell.Name).SubItems(2).Text = AllControlText.StatusConnected
-                Else
-                    If currentEnergyCell.CellConnection.Client.Available(99) Then
-                        LstDevices.Items.Item(currentEnergyCell.Name).SubItems(2).Text = AllControlText.StatusConnecting
-                    Else
-                        LstDevices.Items.Item(currentEnergyCell.Name).SubItems(2).Text =
-                            AllControlText.StatusUnavailable
-                    End If
-                End If
             Else
                 Dim currentController = UpstreamControllers.All.Find(Function(p) p.Name.Equals(cName))
 
@@ -378,7 +366,7 @@ Public Class FrmControls
                 DisplayValue(0, "Voltage", TxtDeltaE, LblDeltaEUnit)
                 LblDeltaOmega.Text = AllControlText.SynchronizingSpeedLabel
 
-                'Update Connection Status
+                ' Update Connection Status
                 If currentController.ControllerConnection.Client.Connected Then
                     LstDevices.Items.Item(currentController.Name).SubItems(2).Text = AllControlText.StatusConnected
                 Else
@@ -390,6 +378,36 @@ Public Class FrmControls
                     End If
                 End If
             End If
+
+            ' Update Connection Status for all devices (including upstream controllers)
+            For Each device As ListViewItem In LstDevices.Items
+                If EnergyCells.All.Exists(Function(p) p.Name.Equals(device.Name))
+                    Dim currentItem = EnergyCells.All.Find(Function(p) p.Name.Equals(device.Name))
+
+                    If currentItem.CellConnection.Client.Connected Then
+                        LstDevices.Items.Item(currentItem.Name).SubItems(2).Text = AllControlText.StatusConnected
+                    Else
+                        If currentItem.CellConnection.Client.Available(4000) Then
+                            LstDevices.Items.Item(currentItem.Name).SubItems(2).Text = AllControlText.StatusConnecting
+                        Else
+                            LstDevices.Items.Item(currentItem.Name).SubItems(2).Text = AllControlText.StatusUnavailable
+                        End If
+                    End If
+                ElseIf UpstreamControllers.All.Exists(Function(p) p.Name.Equals(device.Name))
+                    Dim currentItem = UpstreamControllers.All.Find(Function(p) p.Name.Equals(device.Name))
+
+                    If currentItem.ControllerConnection.Client.Connected Then
+                        LstDevices.Items.Item(currentItem.Name).SubItems(2).Text = AllControlText.StatusConnected
+                    Else
+                        If currentItem.ControllerConnection.Client.Available(4000) Then
+                            LstDevices.Items.Item(currentItem.Name).SubItems(2).Text = AllControlText.StatusConnecting
+                        Else
+                            LstDevices.Items.Item(currentItem.Name).SubItems(2).Text = AllControlText.StatusUnavailable
+                        End If
+                    End If
+                End If
+            Next
+
         End If
 
         Application.DoEvents()
