@@ -296,7 +296,7 @@ Public Class FrmControls
         End If
     End Sub
 
-    ' Called by ControlLoop.OnPulse every 400 ms to update display of variables via the delegate above
+    ' Called by ControlLoop.OnPulse every period (Ts) to update display of variables via the delegate above
     Private Sub UpdateDisplay()
         If LstDevices.Items.Count > 0 Then
             Dim cName As String
@@ -365,18 +365,6 @@ Public Class FrmControls
                 DisplayValue(currentController.DeltaOmega, "Frequency", TxtDeltaOmega, LblDeltaOmegaUnit)
                 DisplayValue(0, "Voltage", TxtDeltaE, LblDeltaEUnit)
                 LblDeltaOmega.Text = AllControlText.SynchronizingSpeedLabel
-
-                ' Update Connection Status
-                If currentController.ControllerConnection.Client.Connected Then
-                    LstDevices.Items.Item(currentController.Name).SubItems(2).Text = AllControlText.StatusConnected
-                Else
-                    If currentController.ControllerConnection.Client.Available(99) Then
-                        LstDevices.Items.Item(currentController.Name).SubItems(2).Text = AllControlText.StatusConnecting
-                    Else
-                        LstDevices.Items.Item(currentController.Name).SubItems(2).Text =
-                            AllControlText.StatusUnavailable
-                    End If
-                End If
             End If
 
             ' Update Connection Status for all devices (including upstream controllers)
@@ -487,7 +475,7 @@ Public Class FrmControls
             If Not c.CellConnection.Client.Connected Then
                 c.CellConnection.ShutDown = False
 
-                If c.CellConnection.Client.Available(99) Then
+                If c.CellConnection.Client.Available(4000) Then
                     Try
                         c.CellConnection.Client.Connect(c.CellConnection.Client.IPAddress, c.CellConnection.Client.Port)
                         LstDevices.Items.Item(c.Name).SubItems(2).Text = AllControlText.StatusConnected
@@ -506,7 +494,7 @@ Public Class FrmControls
             If Not c.ControllerConnection.Client.Connected Then
                 c.ControllerConnection.ShutDown = False
 
-                If c.ControllerConnection.Client.Available(99) Then
+                If c.ControllerConnection.Client.Available(4000) Then
                     Try
                         c.ControllerConnection.Client.Connect(c.ControllerConnection.Client.IPAddress,
                                                               c.ControllerConnection.Client.Port)
