@@ -95,7 +95,7 @@ Public Class EnergyCell
                 $"{Now.Hour}:{Now.Minute}:{Now.Second}.{Now.Millisecond} - {Name} Meas. Read:  ({ _
                                  String.Join(", ", Array.ConvertAll(wordResult, Function(x) x.ToString()))})")
         Catch ex As Exception
-            Console.WriteLine($"{Now.Hour}:{Now.Minute}:{Now.Second}.{Now.Millisecond} - EnergyCell {Name} ReadMeasurements:  {ex.Message}")
+            Console.WriteLine($"{Now.Hour}:{Now.Minute}:{Now.Second}.{Now.Millisecond} - Ex - EnergyCell {Name} ReadMeasurements:  {ex.Message}")
             'wordResult = {CType(VoltageMagnitudeA/VoltageScale, Integer),
             '              Math.Sign(VoltageAngleA) + 1,
             '              CType(VoltageAngleA/AngleScale, Integer),

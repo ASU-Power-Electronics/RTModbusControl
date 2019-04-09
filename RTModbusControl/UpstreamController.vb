@@ -15,6 +15,9 @@ Public Class UpstreamController
 
         Try
             result = ControllerConnection.Client.ReadInputRegisters(0, 2)
+            Console.WriteLine(
+                $"{Now.Hour}:{Now.Minute}:{Now.Second}.{Now.Millisecond} - Controller {Name} Meas. Read:  ({ _
+                                 String.Join(", ", Array.ConvertAll(result, Function(x) x.ToString()))})")
         Catch ex As Exception
             Console.WriteLine($"{Now.Hour}:{Now.Minute}:{Now.Second}.{Now.Millisecond} - Ex - Controller {Name}:  {ex.Message}")
         End Try
