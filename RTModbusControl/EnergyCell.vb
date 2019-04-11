@@ -48,7 +48,7 @@ Public Class EnergyCell
     Private Const AngleScale As Double = 1/100
     Private Const PowerScale As Double = 1000
     Private Const SpeedScale As Double = 1/1000
-    Private Const EnergyStorageScale As Double = 10
+    Private Const EnergyStorageScale As Double = 1/10
 
     Private Sub OnDisconnect() Handles _cellConnection.Disconnected
         Connected.Remove(Me)
@@ -73,7 +73,7 @@ Public Class EnergyCell
     ' 10 - 1 + sgn(ω0 - ω)
     ' 11 - |ω0 - ω| * 1000
     ' 12 - P_PV / 1000
-    ' 13 - E_s / 10
+    ' 13 - E_s * 10
     ' TODO: Generalize to array input for register mapping (for different devices)
     Public Async Function ReadMeasurementsAsync() As Task(Of Boolean)
         Dim registerAddresses As Integer() = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14}
@@ -145,7 +145,7 @@ Public Class EnergyCell
     ' 12 - |δω|*1000
     ' 13 - sgn(δE) + 1
     ' 14 - |δE|
-    ' 15 - E_s,avg / 10
+    ' 15 - E_s,avg * 10
     ' TODO: Generalize to array input for register mapping (for different devices)
     Public Async Function ReadCommandsAsync() As Task(Of Boolean)
         Dim registerAddresses As Integer() = {9, 10, 11, 12, 13, 14, 15, 16}
@@ -209,7 +209,7 @@ Public Class EnergyCell
     ' 4 - |δω| / 1000
     ' 5 - 1 + sgn(δE)
     ' 6 - δE
-    ' 7 - E_s,avg / 10
+    ' 7 - E_s,avg * 10
     ' TODO: Generalize to array input for register mapping (for different devices)
     Public Async Function WriteCommandsAsync() As Task(Of Boolean)
         Dim registerAddresses As Integer() = {1, 2, 3, 4, 5, 6, 7, 8}

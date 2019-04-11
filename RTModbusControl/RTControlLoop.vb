@@ -109,6 +109,10 @@ Public Class RTControlLoop
                 End Try
             End If
 
+            ' Accumulate energy storage value contribution from EnergyCell c
+            energySum = energySum + c.EnergyStorage
+
+            ' If for any reason an operation failed, remake connection (via events in Connection class)
             If Not opComplete Then
                 c.CellConnection.Client.Disconnect()
             End If
@@ -129,10 +133,6 @@ Public Class RTControlLoop
         End If
 
         ' Calculate new average energy storage value
-        For Each c In EnergyCells.All
-            energySum = energySum + c.EnergyStorage
-        Next
-
         _averageStoredEnergy = energySum / EnergyCells.All.Count
 
         SetPrimaryEC()
