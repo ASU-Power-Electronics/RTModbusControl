@@ -22,6 +22,7 @@ Public Class RTControlLoop
     Private _stateObject As StateObjClass           ' timer state information
     Private Shared _isRunning As Boolean            ' local variable for public function
     Private _controlVarList As List(Of LoopVars)    ' list of control variable objects
+    Private _lockObject As Object                   ' object to be used for SyncLock
 
     ' Public events
     Public Event Update(sender As Object, e As EventArgs)
@@ -54,6 +55,10 @@ Public Class RTControlLoop
                                         .EEold = 0.0,
                                         .EWold = 0.0})
             Next
+        End If
+
+        If IsNothing(_lockObject)
+            _lockObject = New Object
         End If
 
         Dim timerDelegate As New TimerCallback(AddressOf OnPulse)
@@ -95,15 +100,15 @@ Public Class RTControlLoop
         Parallel.ForEach(EnergyCells.All, Async Sub(c)
             c.EnergyStorageAverage = _averageStoredEnergy
             Dim opComplete As Boolean = True
-            Dim cellIndex = EnergyCells.All.FindIndex(Function(p) Equals(p, c))
+            Dim controlVars = _controlVarList(EnergyCells.All.IndexOf(c))
 
             If Connected.Contains(c) Then
                 Try
                     If c.Status = "Remote" Then
                         opComplete = Await c.ReadMeasurementsAsync()
 
-                        c.DeltaW = _controlVarList(cellIndex).DeltaW
-                        c.DeltaE = _controlVarList(cellIndex).DeltaE
+                        c.DeltaW = controlVars.DeltaW
+                        c.DeltaE = controlVars.DeltaE
 
                         opComplete = Await c.WriteCommandsAsync()
                     Else ' Local
@@ -111,8 +116,8 @@ Public Class RTControlLoop
                         opComplete = Await c.ReadCommandsAsync()
                         opComplete = Await c.SendLocalControlCommandAsync()
 
-                        _controlVarList(cellIndex).DeltaW = c.DeltaW
-                        _controlVarList(cellIndex).DeltaE = c.DeltaE
+                        controlVars.DeltaW = c.DeltaW
+                        controlVars.DeltaE = c.DeltaE
                     End If
                 Catch ex As Exception
                     Console.WriteLine($"{Now.Hour}:{Now.Minute}:{Now.Second}.{Now.Millisecond} - Ex - Parallel Read/Write:  {ex.Message}")
@@ -120,15 +125,18 @@ Public Class RTControlLoop
             End If
 
             ' Accumulate energy storage value contribution from EnergyCell c
-            energySum = energySum + c.EnergyStorage
+            ' Prevent race condition with SyncLock
+            SyncLock _lockObject
+                energySum = energySum + c.EnergyStorage
+            End SyncLock
 
             ' If for any reason an operation failed, remake connection (via events in Connection class)
             If Not opComplete Then
                 c.CellConnection.Client.Disconnect()
             Else
                 Try
-                    _controlVarList(cellIndex).EW = _omegaStar - c.Speed
-                    _controlVarList(cellIndex).Ee = c.VoltageSetpoint - c.VoltageMagnitudeA
+                    controlVars.Ew = _omegaStar - c.Speed
+                    controlVars.Ee = c.VoltageSetpoint - c.VoltageMagnitudeA
                 Catch ex As Exception
                     If Equals(Connected.Count, 0)
                         Console.WriteLine($"{Now.Hour}:{Now.Minute}:{Now.Second}.{Now.Millisecond} - OnPulse:  No connected devices. Control frozen.")
@@ -136,17 +144,17 @@ Public Class RTControlLoop
                         Console.WriteLine($"{Now.Hour}:{Now.Minute}:{Now.Second}.{Now.Millisecond} - Ex - OnPulse:  {ex.Message}")
                     End If
 
-                    _controlVarList(cellIndex).Ew = _controlVarList(cellIndex).EWold
-                    _controlVarList(cellIndex).Ee = _controlVarList(cellIndex).EEold
+                    controlVars.Ew = controlVars.EWold
+                    controlVars.Ee = controlVars.EEold
                 End Try
 
-                _controlVarList(cellIndex).DeltaW = Saturate(_controlVarList(cellIndex).DeltaWold + (KPw + KIw * Ts / 2) * _controlVarList(cellIndex).Ew - (KPw - KIw * Ts / 2) * _controlVarList(cellIndex).EWold, OmegaLimit)
-                _controlVarList(cellIndex).DeltaE = Saturate(_controlVarList(cellIndex).DeltaEold + (KPe + KIe * Ts / 2) * _controlVarList(cellIndex).Ee - (KPe - KIe * Ts / 2) * _controlVarList(cellIndex).EEold, VoltageLimit)
+                controlVars.DeltaW = Saturate(controlVars.DeltaWold + (KPw + KIw * Ts / 2) * controlVars.Ew - (KPw - KIw * Ts / 2) * controlVars.EWold, OmegaLimit)
+                controlVars.DeltaE = Saturate(controlVars.DeltaEold + (KPe + KIe * Ts / 2) * controlVars.Ee - (KPe - KIe * Ts / 2) * controlVars.EEold, VoltageLimit)
 
-                _controlVarList(cellIndex).EWold = _controlVarList(cellIndex).Ew
-                _controlVarList(cellIndex).EEold = _controlVarList(cellIndex).Ee
-                _controlVarList(cellIndex).DeltaWold = _controlVarList(cellIndex).DeltaW
-                _controlVarList(cellIndex).DeltaEold = _controlVarList(cellIndex).DeltaE
+                controlVars.EWold = controlVars.Ew
+                controlVars.EEold = controlVars.Ee
+                controlVars.DeltaWold = controlVars.DeltaW
+                controlVars.DeltaEold = controlVars.DeltaE
             End If
 
             End Sub)
